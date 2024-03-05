@@ -75,4 +75,60 @@ class QuoteBot(Bot):
 
 
 class ImageProcessingBot(Bot):
-    pass
+    def __init__(self, token, telegram_chat_url):
+        super().__init__(token, telegram_chat_url)
+        self.media_group = None
+        self.continuous_command = None
+        self.previous_pic = None
+
+    def handle_message(self, msg):
+        logger.info(f'Incoming message: {msg}')
+        if msg.get("caption"):
+            photo_path = self.download_user_photo(msg)
+            process_photo = Img(photo_path)
+            known_filter = True
+
+            if self.media_group is not None and msg.get("media_group_id"):
+                self.media_group = msg.get("media_group_id")
+                self.continuous_command = None
+
+            if self.continuous_command is not None and msg.get("caption") is None:
+                apply_filter = self.continuous_command
+            else:
+                apply_filter = msg.get("caption")
+                self.continuous_command = None
+
+            if apply_filter == "blur":
+                process_photo.blur()
+                self.continuous_command = "blur"
+            elif apply_filter == "contour":
+                process_photo.contour()
+                self.continuous_command = "contour"
+            elif apply_filter == "rotate":
+                process_photo.rotate()
+                self.continuous_command = "rotate"
+            elif apply_filter == "salt_n_pepper":
+                process_photo.salt_n_pepper()
+                self.continuous_command = "salt_n_pepper"
+            elif apply_filter == "concat":
+                if self.media_group:
+                    process_photo.concat(self.previous_pic)
+                    self.previous_pic = None
+                else:
+                    self.previous_pic = process_photo
+                self.continuous_command = "concat"
+            elif apply_filter == "segment":
+                process_photo.segment()
+                self.continuous_command = "segment"
+            else:
+                self.send_text(msg['chat']['id'], "I don't know this filter, you may meant something else?")
+                known_filter = False
+
+            if known_filter and not self.previous_pic:
+                processed_pic = process_photo.save_img()
+                self.send_photo(msg['chat']['id'], processed_pic)
+            print(msg)
+
+        #     print(msg["caption"])
+        # for i in msg:
+        #     print(f"TEST: {i}")

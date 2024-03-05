@@ -1,5 +1,6 @@
 from pathlib import Path
 from matplotlib.image import imread, imsave
+import random
 
 
 def rgb2gray(rgb):
@@ -51,17 +52,37 @@ class Img:
             self.data[i] = res
 
     def rotate(self):
-        # TODO remove the `raise` below, and write your implementation
-        raise NotImplementedError()
+        result = list(zip(*reversed(self.data)))
+        self.data = result
 
     def salt_n_pepper(self):
-        # TODO remove the `raise` below, and write your implementation
-        raise NotImplementedError()
+        rand_val = 0
+        for i in range(len(self.data)):
+            for g in range(len(self.data[i])):
+                rand_val = random.random()
+                if rand_val < 0.2:
+                    # print(f"{rand_val}: is less than 0.2 ")
+                    self.data[i][g] = 255
+                elif rand_val > 0.8:
+                    self.data[i][g] = 0
 
     def concat(self, other_img, direction='horizontal'):
-        # TODO remove the `raise` below, and write your implementation
-        raise NotImplementedError()
+        res = []
+        if direction == "horizontal":
+            if len(self.data) == len(other_img.data):
+                for i in range(len(self.data)):
+                    res.append(self.data[i] + other_img.data[i])
+                self.data = res
+            else:
+                raise RuntimeError("Dimensions not matched!")
+        else:
+            raise RuntimeError("Unknown direction")
 
     def segment(self):
-        # TODO remove the `raise` below, and write your implementation
-        raise NotImplementedError()
+        for i in range(len(self.data)):
+            for g in range(len(self.data[i])):
+                if self.data[i][g] > 100:
+                    self.data[i][g] = 255
+                else:
+                    self.data[i][g] = 0
+
