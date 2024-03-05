@@ -78,57 +78,80 @@ class ImageProcessingBot(Bot):
     def __init__(self, token, telegram_chat_url):
         super().__init__(token, telegram_chat_url)
         self.media_group = None
-        self.continuous_command = None
+        self.filter = None
+        self.filters_list = ["blur", "contour", "rotate", "segment", "salt_n_pepper", "concat", "segment"]
         self.previous_pic = None
+
+    @staticmethod
+    def _apply_filter(img, filter):
+        if filter == "blur":
+            img.blur()
+        elif filter == "contour":
+            img.contour()
+        elif filter == "rotate":
+            img.rotate()
+        elif filter == "segment":
+            img.segment()
+        elif filter == "salt_n_pepper":
+            img.salt_n_pepper()
+        elif filter == "segment":
+            img.segment()
 
     def handle_message(self, msg):
         logger.info(f'Incoming message: {msg}')
-        if msg.get("caption"):
-            photo_path = self.download_user_photo(msg)
-            process_photo = Img(photo_path)
-            known_filter = True
+        if self.media_group is None:
+            self.media_group = msg.get("media_group_id")
+        elif self.media_group != msg.get("media_group_id"):
+            self.media_group = msg.get("media_group_id")
+            self.filter = None
 
-            if self.media_group is not None and msg.get("media_group_id"):
-                self.media_group = msg.get("media_group_id")
-                self.continuous_command = None
-
-            if self.continuous_command is not None and msg.get("caption") is None:
-                apply_filter = self.continuous_command
+        if self.filter is None or msg.get("media_group_id") is None:
+            if msg.get("caption"):
+                self.filter = msg.get("caption")
             else:
-                apply_filter = msg.get("caption")
-                self.continuous_command = None
+                self.send_text(
+                    msg['chat']['id'],
+                    f"You have to provide a picture and one of the following filters: {self.filters_list}"
+                )
+                return None
 
-            if apply_filter == "blur":
-                process_photo.blur()
-                self.continuous_command = "blur"
-            elif apply_filter == "contour":
-                process_photo.contour()
-                self.continuous_command = "contour"
-            elif apply_filter == "rotate":
-                process_photo.rotate()
-                self.continuous_command = "rotate"
-            elif apply_filter == "salt_n_pepper":
-                process_photo.salt_n_pepper()
-                self.continuous_command = "salt_n_pepper"
-            elif apply_filter == "concat":
-                if self.media_group:
-                    process_photo.concat(self.previous_pic)
-                    self.previous_pic = None
-                else:
+        if self.filter == "concat":
+            if msg.get("media_group_id"):
+                if msg.get("caption"):
+                    photo_path = self.download_user_photo(msg)
+                    process_photo = Img(photo_path)
                     self.previous_pic = process_photo
-                self.continuous_command = "concat"
-            elif apply_filter == "segment":
-                process_photo.segment()
-                self.continuous_command = "segment"
-            else:
-                self.send_text(msg['chat']['id'], "I don't know this filter, you may meant something else?")
-                known_filter = False
+                else:
+                    photo_path = self.download_user_photo(msg)
+                    process_photo = Img(photo_path)
+                    process_photo.concat(self.previous_pic)
+                    processed_pic = process_photo.save_img()
+                    self.send_photo(msg['chat']['id'], processed_pic)
 
-            if known_filter and not self.previous_pic:
+        elif msg.get("media_group_id") is None:
+            if self.filter in self.filters_list:
+                photo_path = self.download_user_photo(msg)
+                process_photo = Img(photo_path)
+                self._apply_filter(process_photo, self.filter)
+                self.filter = None
                 processed_pic = process_photo.save_img()
                 self.send_photo(msg['chat']['id'], processed_pic)
-            print(msg)
-
-        #     print(msg["caption"])
-        # for i in msg:
-        #     print(f"TEST: {i}")
+            else:
+                self.send_text(
+                    msg['chat']['id'],
+                    f"You have to provide a picture and one of the following filters: {self.filters_list}"
+                )
+                self.filter = None
+        else:
+            if self.filter in self.filters_list:
+                photo_path = self.download_user_photo(msg)
+                process_photo = Img(photo_path)
+                self._apply_filter(process_photo, self.filter)
+                processed_pic = process_photo.save_img()
+                self.send_photo(msg['chat']['id'], processed_pic)
+            else:
+                self.send_text(
+                    msg['chat']['id'],
+                    f"You have to provide a picture and one of the following filters: {self.filters_list}"
+                )
+                self.filter = None
