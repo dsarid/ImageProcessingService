@@ -79,22 +79,22 @@ class ImageProcessingBot(Bot):
         super().__init__(token, telegram_chat_url)
         self.media_group = None
         self.filter = None
-        self.filters_list = ["blur", "contour", "rotate", "segment", "salt_n_pepper", "concat", "segment"]
+        self.filters_list = ["Blur", "Contour", "Rotate", "Segment", "Salt and pepper", "Concat", "Segment"]
         self.previous_pic = None
 
     @staticmethod
     def _apply_filter(img, filter):
-        if filter == "blur":
+        if filter == "Blur":
             img.blur()
-        elif filter == "contour":
+        elif filter == "Contour":
             img.contour()
-        elif filter == "rotate":
+        elif filter == "Rotate":
             img.rotate()
-        elif filter == "segment":
+        elif filter == "Segment":
             img.segment()
-        elif filter == "salt_n_pepper":
+        elif filter == "Salt and pepper":
             img.salt_n_pepper()
-        elif filter == "segment":
+        elif filter == "Segment":
             img.segment()
 
     def handle_message(self, msg):
@@ -115,7 +115,7 @@ class ImageProcessingBot(Bot):
                 )
                 return None
 
-        if self.filter == "concat":
+        if self.filter == "Concat":
             if msg.get("media_group_id"):
                 if msg.get("caption"):
                     photo_path = self.download_user_photo(msg)
@@ -130,28 +130,40 @@ class ImageProcessingBot(Bot):
 
         elif msg.get("media_group_id") is None:
             if self.filter in self.filters_list:
-                photo_path = self.download_user_photo(msg)
-                process_photo = Img(photo_path)
-                self._apply_filter(process_photo, self.filter)
-                self.filter = None
-                processed_pic = process_photo.save_img()
-                self.send_photo(msg['chat']['id'], processed_pic)
+                try:
+                    photo_path = self.download_user_photo(msg)
+                    process_photo = Img(photo_path)
+                    self._apply_filter(process_photo, self.filter)
+                    self.filter = None
+                    processed_pic = process_photo.save_img()
+                    self.send_photo(msg['chat']['id'], processed_pic)
+                except Exception:
+                    self.send_text(
+                        msg['chat']['id'],
+                        f"An error occurred. You have to provide a picture and one of the following filters: {self.filters_list}"
+                    )
             else:
                 self.send_text(
                     msg['chat']['id'],
-                    f"You have to provide a picture and one of the following filters: {self.filters_list}"
+                    f"An error occurred. You have to provide a picture and one of the following filters: {self.filters_list}"
                 )
                 self.filter = None
         else:
             if self.filter in self.filters_list:
-                photo_path = self.download_user_photo(msg)
-                process_photo = Img(photo_path)
-                self._apply_filter(process_photo, self.filter)
-                processed_pic = process_photo.save_img()
-                self.send_photo(msg['chat']['id'], processed_pic)
+                try:
+                    photo_path = self.download_user_photo(msg)
+                    process_photo = Img(photo_path)
+                    self._apply_filter(process_photo, self.filter)
+                    processed_pic = process_photo.save_img()
+                    self.send_photo(msg['chat']['id'], processed_pic)
+                except Exception:
+                    self.send_text(
+                        msg['chat']['id'],
+                        f"An error occurred. ou have to provide a picture and one of the following filters: {self.filters_list}"
+                    )
             else:
                 self.send_text(
                     msg['chat']['id'],
-                    f"You have to provide a picture and one of the following filters: {self.filters_list}"
+                    f"An error occurred. ou have to provide a picture and one of the following filters: {self.filters_list}"
                 )
                 self.filter = None
